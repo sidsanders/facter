@@ -23,7 +23,7 @@ class Facter::Util::Resolution
   attr_accessor :timeout
 
   # @api private
-  attr_accessor :interpreter, :code, :name
+  attr_accessor :code, :name
   attr_writer :value, :weight
 
   INTERPRETER = Facter::Util::Config.is_windows? ? "cmd.exe" : "/bin/sh"
@@ -197,9 +197,10 @@ class Facter::Util::Resolution
   def self.exec(code, interpreter = nil)
     Facter.warnonce "The interpreter parameter to 'exec' is deprecated and will be removed in a future version." if interpreter
 
-    ## Set LANG to force i18n to C for the duration of this exec; this ensures that any code that parses the
+    ## Set LC_ALL to force i18n to C for the duration of this exec; this ensures that any code that parses the
     ## output of the command can expect it to be in a consistent / predictable format / locale
-    with_env "LANG" => "C" do
+    locale_vars = { "LC_ALL" => "C", "LANG" => "C" }
+    with_env locale_vars  do
 
       if expanded_code = expand_command(code)
         # if we can find the binary, we'll run the command with the expanded path to the binary
@@ -220,7 +221,7 @@ class Facter::Util::Resolution
         # command not found on Windows
         return nil
       rescue => detail
-        $stderr.puts detail
+        Facter.warn(detail)
         return nil
       end
 
@@ -462,7 +463,7 @@ class Facter::Util::Resolution
         end
       end
     rescue Timeout::Error => detail
-      warn "Timed out seeking value for %s" % self.name
+      Facter.warn "Timed out seeking value for %s" % self.name
 
       # This call avoids zombies -- basically, create a thread that will
       # dezombify all of the child processes that we're ignoring because
@@ -470,7 +471,7 @@ class Facter::Util::Resolution
       Thread.new { Process.waitall }
       return nil
     rescue => details
-      warn "Could not retrieve %s: %s" % [self.name, details]
+      Facter.warn "Could not retrieve %s: %s" % [self.name, details]
       return nil
     end
 

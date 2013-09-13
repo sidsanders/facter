@@ -73,7 +73,8 @@ class Facter::Util::Loader
   def valid_search_path?(path)
     return @valid_path[path] unless @valid_path[path].nil?
 
-    return @valid_path[path] = Pathname.new(path).absolute?
+    #if absolute or if embedded in a jar
+    return @valid_path[path] = (Pathname.new(path).absolute? or path.start_with?('file:/'))
   end
   private :valid_search_path?
 
@@ -98,7 +99,7 @@ class Facter::Util::Loader
       # Don't store the path if the file can't be loaded
       # in case it's loadable later on.
       @loaded.delete(file)
-      warn "Error loading fact #{file} #{detail}"
+      Facter.warn "Error loading fact #{file} #{detail}"
     end
   end
 

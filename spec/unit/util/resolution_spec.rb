@@ -54,7 +54,7 @@ describe Facter::Util::Resolution do
 
   describe "when overriding environment variables" do
     it "should execute the caller's block with the specified env vars" do
-      test_env = { "LANG" => "C", "FOO" => "BAR" }
+      test_env = { "LC_ALL" => "C", "FOO" => "BAR" }
       Facter::Util::Resolution.with_env test_env do
         test_env.keys.each do |key|
           ENV[key].should == test_env[key]
@@ -198,49 +198,24 @@ describe Facter::Util::Resolution do
     end
 
     describe "and the code is a string" do
-      describe "on windows" do
-        before do
-          given_a_configuration_of(:is_windows => true)
-        end
+      it "should return the result of executing the code" do
+        @resolve.setcode "/bin/foo"
+        Facter::Util::Resolution.expects(:exec).once.with("/bin/foo").returns "yup"
 
-        it "should return the result of executing the code" do
-          @resolve.setcode "/bin/foo"
-          Facter::Util::Resolution.expects(:exec).once.with("/bin/foo").returns "yup"
-
-          @resolve.value.should == "yup"
-        end
-
-        it "should return nil if the value is an empty string" do
-          @resolve.setcode "/bin/foo"
-          Facter::Util::Resolution.expects(:exec).once.returns ""
-          @resolve.value.should be_nil
-        end
+        @resolve.value.should == "yup"
       end
 
-      describe "on non-windows systems" do
-        before do
-          given_a_configuration_of(:is_windows => false)
-        end
-
-        it "should return the result of executing the code" do
-          @resolve.setcode "/bin/foo"
-          Facter::Util::Resolution.expects(:exec).once.with("/bin/foo").returns "yup"
-
-          @resolve.value.should == "yup"
-        end
-
-        it "should return nil if the value is an empty string" do
-          @resolve.setcode "/bin/foo"
-          Facter::Util::Resolution.expects(:exec).once.returns ""
-          @resolve.value.should be_nil
-        end
+      it "should return nil if the value is an empty string" do
+        @resolve.setcode "/bin/foo"
+        Facter::Util::Resolution.expects(:exec).once.returns ""
+        @resolve.value.should be_nil
       end
     end
 
     describe "and the code is a block" do
       it "should warn but not fail if the code fails" do
         @resolve.setcode { raise "feh" }
-        @resolve.expects(:warn)
+        Facter.expects(:warn)
         @resolve.value.should be_nil
       end
 
@@ -269,7 +244,7 @@ describe Facter::Util::Resolution do
       end
 
       it "should timeout after the provided timeout" do
-        @resolve.expects(:warn)
+        Facter.expects(:warn)
         @resolve.timeout = 0.1
         @resolve.setcode { sleep 2; raise "This is a test" }
         Thread.expects(:new).yields
@@ -278,7 +253,7 @@ describe Facter::Util::Resolution do
       end
 
       it "should waitall to avoid zombies if the timeout is exceeded" do
-        @resolve.stubs(:warn)
+        Facter.stubs(:warn)
         @resolve.timeout = 0.1
         @resolve.setcode { sleep 2; raise "This is a test" }
 
@@ -619,8 +594,8 @@ describe Facter::Util::Resolution do
       Facter::Util::Resolution.exec(echo_command).should == "foo"
     end
 
-    it "should override the LANG environment variable" do
-      Facter::Util::Resolution.exec(echo_env_var_command % 'LANG').should == "C"
+    it "should override the LC_ALL environment variable" do
+      Facter::Util::Resolution.exec(echo_env_var_command % 'LC_ALL').should == "C"
     end
 
     it "should respect other overridden environment variables" do
@@ -629,27 +604,27 @@ describe Facter::Util::Resolution do
       end
     end
 
-    it "should restore overridden LANG environment variable after execution" do
+    it "should restore overridden LC_ALL environment variable after execution" do
       # we're going to call with_env in a nested fashion, to make sure that the environment gets restored properly
       # at each level
-      Facter::Util::Resolution.with_env( {"LANG" => "foo"} ) do
-        # Resolution.exec always overrides 'LANG' for its own execution scope
-        Facter::Util::Resolution.exec(echo_env_var_command % 'LANG').should == "C"
+      Facter::Util::Resolution.with_env( {"LC_ALL" => "foo"} ) do
+        # Resolution.exec always overrides 'LC_ALL' for its own execution scope
+        Facter::Util::Resolution.exec(echo_env_var_command % 'LC_ALL').should == "C"
         # But after 'exec' completes, we should see our value restored
-        ENV['LANG'].should == "foo"
+        ENV['LC_ALL'].should == "foo"
         # Now we'll do a nested call to with_env
-        Facter::Util::Resolution.with_env( {"LANG" => "bar"} ) do
+        Facter::Util::Resolution.with_env( {"LC_ALL" => "bar"} ) do
           # During 'exec' it should still be 'C'
-          Facter::Util::Resolution.exec(echo_env_var_command % 'LANG').should == "C"
+          Facter::Util::Resolution.exec(echo_env_var_command % 'LC_ALL').should == "C"
           # After exec it should be restored to our current value for this level of the nesting...
-          ENV['LANG'].should == "bar"
+          ENV['LC_ALL'].should == "bar"
         end
         # Now we've dropped out of one level of nesting,
-        ENV['LANG'].should == "foo"
+        ENV['LC_ALL'].should == "foo"
         # Call exec one more time just for kicks
-        Facter::Util::Resolution.exec(echo_env_var_command % 'LANG').should == "C"
+        Facter::Util::Resolution.exec(echo_env_var_command % 'LC_ALL').should == "C"
         # One last check at our current nesting level.
-        ENV['LANG'].should == "foo"
+        ENV['LC_ALL'].should == "foo"
       end
     end
 

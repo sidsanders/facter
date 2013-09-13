@@ -2,6 +2,8 @@
 ## Support module for memory related facts
 ##
 
+require 'facter/util/posix'
+
 module Facter::Memory
   def self.meminfo_number(tag)
     memsize = ""
@@ -67,6 +69,14 @@ module Facter::Memory
     freemem = ( memfree + memspecfree ) * pagesize
   end
 
+  # on AIX use svmon to get the free memory:
+  # it's the third value on the line starting with memory
+  # svmon can be run by non root users
+  def self.svmon_aix_find_free_memory()
+    Facter::Util::Resolution.exec("/usr/bin/svmon -O unit=KB") =~ /^memory\s+\d+\s+\d+\s+(\d+)\s+/
+    $1
+  end
+
   def self.mem_free(kernel = Facter.value(:kernel))
     output = mem_free_info(kernel)
     scale_mem_free_value output, kernel
@@ -80,12 +90,14 @@ module Facter::Memory
       vmstat_find_free_memory(["-H"])
     when /Darwin/i
       vmstat_darwin_find_free_memory()
+    when /AIX/i
+      svmon_aix_find_free_memory()
     end
   end
 
   def self.scale_mem_free_value (value, kernel)
     case kernel
-    when /OpenBSD/i, /FreeBSD/i, /SunOS/i, /Dragonfly/i
+    when /OpenBSD/i, /FreeBSD/i, /SunOS/i, /Dragonfly/i, /AIX/i
       value.to_f / 1024.0
     when /Darwin/i
       value.to_f / 1024.0 / 1024.0
@@ -101,14 +113,14 @@ module Facter::Memory
 
   def self.mem_size_info(kernel = Facter.value(:kernel))
     case kernel
-    when /OpenBSD/i
-      Facter::Util::Resolution.exec("sysctl hw.physmem | cut -d'=' -f2")
-    when /FreeBSD/i
-      Facter::Util::Resolution.exec("sysctl -n hw.physmem")
+    when /Dragonfly/i, /FreeBSD/i, /OpenBSD/i
+      Facter::Util::POSIX.sysctl("hw.physmem")
     when /Darwin/i
-      Facter::Util::Resolution.exec("sysctl -n hw.memsize")
-    when /Dragonfly/i
-      Facter::Util::Resolution.exec("sysctl -n hw.physmem")
+      Facter::Util::POSIX.sysctl("hw.memsize")
+    when /AIX/i
+      if Facter::Util::Resolution.exec("/usr/bin/svmon -O unit=KB") =~ /^memory\s+(\d+)\s+/
+        $1
+      end
     end
   end
 
@@ -116,6 +128,8 @@ module Facter::Memory
     case kernel
     when /OpenBSD/i, /FreeBSD/i, /Darwin/i, /Dragonfly/i
       value.to_f / 1024.0 / 1024.0
+    when /AIX/i
+      value.to_f / 1024.0
     else
       value.to_f
     end
@@ -140,7 +154,7 @@ module Facter::Memory
     when /FreeBSD/i
       Facter::Util::Resolution.exec('swapinfo -k')
     when /Darwin/i
-      Facter::Util::Resolution.exec('sysctl vm.swapusage')
+      Facter::Util::POSIX.sysctl('vm.swapusage')
     when /SunOS/i
       Facter::Util::Resolution.exec('/usr/sbin/swap -l')
     end

@@ -1,3 +1,6 @@
+require 'facter/util/posix'
+require 'facter/util/file_read'
+
 module Facter::Util::Virtual
   ##
   # virt_what is a delegating helper method intended to make it easier to stub
@@ -90,7 +93,7 @@ module Facter::Util::Virtual
      txt = if FileTest.exists?("/proc/cpuinfo")
        File.read("/proc/cpuinfo")
      elsif ["FreeBSD", "OpenBSD"].include? Facter.value(:kernel)
-       Facter::Util::Resolution.exec("/sbin/sysctl -n hw.model")
+       Facter::Util::POSIX.sysctl("hw.model")
      end
      if txt =~ /QEMU Virtual CPU/ then true
      elsif txt =~ /Common KVM processor/ then true
@@ -135,18 +138,14 @@ module Facter::Util::Virtual
     "zlinux"
   end
 
-  def self.powervm?
-   #Facter::Util::Resolution.exec("/usr/bin/odmget -q name=`/usr/bin/getconf BO
-OT_DEVICE` CuDv | /usr/bin/grep PdDvLn").chomp =~ /vdisk/
-   # should work for vscsi and npiv vm's
-   Facter::Util::Resolution.exec("/usr/bin/getconf BOOT_DEVICE | /usr/bin/xargs
- -n 1 /usr/sbin/lsdev -F parent -l | /usr/bin/xargs -n 1 /usr/sbin/lsdev -F pare
-nt -l | /usr/bin/xargs -n 1 /usr/sbin/lsdev -l").chomp =~ /Virtual/
-  end
-
-  def self.wpar?
-   # detect system wpars...
-   Facter::Util::Resolution.exec("/usr/sbin/lsdev").chomp =~ /WPAR/
+  def self.parse_virtualization(output)
+    if output
+      lines = output.split("\n")
+      return "parallels"  if lines.any? {|l| l =~ /Parallels/ }
+      return "vmware"     if lines.any? {|l| l =~ /VM[wW]are/ }
+      return "virtualbox" if lines.any? {|l| l =~ /VirtualBox/ }
+      return "xenhvm"     if lines.any? {|l| l =~ /HVM domU/ }
+    end
   end
 
   ##
@@ -160,7 +159,7 @@ nt -l | /usr/bin/xargs -n 1 /usr/sbin/lsdev -l").chomp =~ /Virtual/
   # @return [String] or nil if the path does not exist
   def self.read_sysfs_dmi_entries(path="/sys/firmware/dmi/entries/1-0/raw")
     if File.exists?(path)
-      File.read(path)
+      Facter::Util::FileRead.read_binary(path)
     end
   end
 end

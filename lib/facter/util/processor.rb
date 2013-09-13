@@ -87,6 +87,8 @@ module Processor
         elsif line.match(/\d+\s+((?:PA-RISC|Intel).*processors.*)/) then
           cpu = $1.to_s
           cpu.sub!(/processors/, "processor")
+        elsif line.match(/\s+(Intel.*Processor.*)/) then
+          cpu = $1.to_s
         end
       end
     end
@@ -207,6 +209,15 @@ module Processor
   # getconf_cpu_chip_type delegates directly to Facter::Util::Resolution.exec.
   def self.getconf_cpu_chip_type(command="getconf CPU_CHIP_TYPE")
     Facter::Util::Resolution.exec(command)
+  end
+
+  def self.sysfs_proc_count
+    sysfs_cpu_directory = '/sys/devices/system/cpu'
+    if File.exists?(sysfs_cpu_directory)
+      lookup_pattern = "#{sysfs_cpu_directory}" + "/cpu[0-9]*"
+      cpuCount = Dir.glob(lookup_pattern).length
+      cpuCount.to_s
+    end
   end
 
   def self.enum_cpuinfo

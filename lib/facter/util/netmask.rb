@@ -8,7 +8,7 @@ module Facter::NetMask
     when 'Linux'
       ops = {
         :ifconfig_opts => ['2>/dev/null'],
-        :regex => %r{\s+ inet\saddr: #{Facter.ipaddress} .*? Mask: (#{ipregex})}x,
+        :regex => %r{#{Facter.ipaddress}.*?(?:Mask:|netmask)\s*(#{ipregex})}x,
         :munge => nil,
       }
     when 'SunOS'
@@ -25,7 +25,7 @@ module Facter::NetMask
       }
     end
 
-    Facter::Util::IP.exec_ifconfig(ops[:ifconfig_opts]).split(/\n/).collect do |line|
+    String(Facter::Util::IP.exec_ifconfig(ops[:ifconfig_opts])).split(/\n/).collect do |line|
       matches = line.match(ops[:regex])
       if !matches.nil?
         if ops[:munge].nil?

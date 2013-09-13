@@ -93,6 +93,10 @@ describe Facter::Util::Loader do
         @loader.should be_valid_search_path dir
       end
     end
+
+    it "is true for paths with a file:/ uri scheme" do
+      @loader.should be_valid_search_path 'file:/in/jar'
+    end
   end
 
   describe "when determining the search path" do
@@ -311,7 +315,7 @@ describe Facter::Util::Loader do
       Dir.expects(:entries).with("/one/dir").returns %w{a.rb}
 
       Kernel.expects(:load).with("/one/dir/a.rb").raises(LoadError)
-      loader.expects(:warn)
+      Facter.expects(:warn)
 
       lambda { loader.load_all }.should_not raise_error
     end
