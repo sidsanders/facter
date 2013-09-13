@@ -180,6 +180,18 @@ Facter.add("virtual") do
   end
 end
 
+Facter.add("virtual") do
+  confine :kernel => "AIX"
+  result = "physical"
+  setcode do
+      if Facter::Util::Virtual.powervm?
+	result = "powervm"
+      elsif Facter::Util::Virtual.wpar?
+	result = "wpar"
+      end
+  end
+end
+
 ##
 # virtual fact based on virt-what command.
 #
@@ -241,7 +253,7 @@ end
 #
 
 Facter.add("is_virtual") do
-  confine :kernel => %w{Linux FreeBSD OpenBSD SunOS HP-UX Darwin GNU/kFreeBSD windows}
+  confine :kernel => %w{Linux FreeBSD OpenBSD SunOS HP-UX Darwin GNU/kFreeBSD windows AIX}
 
   setcode do
     physical_types = %w{physical xen0 vmware_server vmware_workstation openvzhn}

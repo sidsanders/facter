@@ -135,6 +135,20 @@ module Facter::Util::Virtual
     "zlinux"
   end
 
+  def self.powervm?
+   #Facter::Util::Resolution.exec("/usr/bin/odmget -q name=`/usr/bin/getconf BO
+OT_DEVICE` CuDv | /usr/bin/grep PdDvLn").chomp =~ /vdisk/
+   # should work for vscsi and npiv vm's
+   Facter::Util::Resolution.exec("/usr/bin/getconf BOOT_DEVICE | /usr/bin/xargs
+ -n 1 /usr/sbin/lsdev -F parent -l | /usr/bin/xargs -n 1 /usr/sbin/lsdev -F pare
+nt -l | /usr/bin/xargs -n 1 /usr/sbin/lsdev -l").chomp =~ /Virtual/
+  end
+
+  def self.wpar?
+   # detect system wpars...
+   Facter::Util::Resolution.exec("/usr/sbin/lsdev").chomp =~ /WPAR/
+  end
+
   ##
   # read_sysfs Reads the raw data as per the documentation at [Detecting if You
   # Are Running in Google Compute
